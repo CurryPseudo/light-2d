@@ -3,18 +3,22 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
+[ExecuteInEditMode]
 public class PointLight : MonoBehaviour {
 	public float radius;
 	public int triangleCount;
 	private MeshFilter meshFilter;
+	private Mesh mesh;
 	void Awake() {
 		meshFilter = GetComponent<MeshFilter>();
 	}
 	void Update() {
-		if(meshFilter.mesh == null) {
-			meshFilter.mesh = new Mesh();
+		if(mesh == null) {
+			mesh = new Mesh();
 		}
-		Mesh mesh = meshFilter.mesh;
+		if(triangleCount < 3) {
+			triangleCount = 3;
+		}
 		mesh.Clear();
 		Vector3[] vertices = new Vector3[triangleCount + 2];
 		vertices[0] = Vector3.zero;
@@ -44,6 +48,7 @@ public class PointLight : MonoBehaviour {
 		mesh.triangles = triangles;
 		mesh.colors = colors;
 		mesh.RecalculateNormals();
+		meshFilter.mesh = mesh;
 
 		var meshRenderer = GetComponent<MeshRenderer>();
 	}

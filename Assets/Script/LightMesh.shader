@@ -9,16 +9,15 @@
      {
          Tags 
          { 
-             "RenderType" = "Opaque" 
-             "Queue" = "Transparent+1" 
+             "LightMode" = "Light" 
+             "Queue" = "Geometry" 
          }
  
          Pass
          {
              ZWrite Off
-             //Blend Off
              ColorMask RGBA
-             //Blend SrcColor One
+             Blend One One
   
              CGPROGRAM
              #pragma vertex vert
