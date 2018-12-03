@@ -7,6 +7,7 @@ using UnityEngine;
 public class PointLight : MonoBehaviour {
 	public float radius;
 	public int triangleCount;
+	public Color lightColor;
 	private MeshFilter meshFilter;
 	private Mesh mesh;
 	void Awake() {
@@ -40,7 +41,7 @@ public class PointLight : MonoBehaviour {
 		}
 
 		Color[] colors = new Color[triangleCount + 2];
-		colors[0] = Color.white;
+		colors[0] = lightColor;
 		for(int i = 0; i < triangleCount + 1; i++) {
 			colors[i + 1] = Color.black;
 		}
