@@ -38,11 +38,9 @@ public class PointLight : MonoBehaviour {
 		light.mesh.Clear();
 		List<Vector3> vertices = new List<Vector3>();
 		vertices.Add(Vector3.zero);
-		vertices.Add(Vector3.zero);
 		List<int> triangles = new List<int>();
 		List<Color> colors = new List<Color>();
 		colors.Add(lightColor);
-		colors.Add(Color.black);
 		circleHitPoint.center = Position;
 		CircleHitPoint.HitInfo? lastHitInfo = null;
 		Func<CircleHitPoint.HitInfo, Vector3> hitToVertex = info =>	{
@@ -50,32 +48,19 @@ public class PointLight : MonoBehaviour {
 			Vector3 pointV3 = new Vector3(point.x, point.y, transform.position.z);
 			return transform.InverseTransformPoint(pointV3);
 		};
-		CircleHitPoint.HitInfo firstHitInfo = new CircleHitPoint.HitInfo();
 		foreach(var hitPointInfo in circleHitPoint.RaycastPoints()) {
 			if(lastHitInfo != null) {
-				if(hitPointInfo.hit2D && lastHitInfo.Value.hit2D) {
-					triangles.Add(1);
-				}
-				else {
-					triangles.Add(0);
-				}
+				triangles.Add(0);
 				triangles.Add(vertices.Count + 0);
 				triangles.Add(vertices.Count - 1);
 				vertices.Add(hitToVertex(hitPointInfo));
-				colors.Add(Color.black);
-			}
-			else {
-				firstHitInfo = hitPointInfo;
+				float normedRadius = circleHitPoint.NormedHitRadius(hitPointInfo);
+				colors.Add(Color.Lerp(lightColor, Color.black, normedRadius));
 			}
 			lastHitInfo = hitPointInfo;
 		}
-		if(firstHitInfo.hit2D && lastHitInfo.Value.hit2D) {
-			triangles.Add(1);
-		}
-		else {
-			triangles.Add(0);
-		}
-		triangles.Add(2);
+		triangles.Add(0);
+		triangles.Add(1);
 		triangles.Add(vertices.Count - 1);
 		light.mesh.SetVertices(vertices);
 		light.mesh.SetTriangles(triangles, 0);
@@ -127,6 +112,9 @@ public class CircleHitPoint {
 	}
 	public Vector2 Position(HitInfo info) {
 		return info.Position(center, radius);
+	}
+	public float NormedHitRadius(HitInfo info) {
+		return Mathf.Clamp01((Position(info) - center).magnitude / radius);
 	}
 	private IEnumerable<HitInfo> BinaryFindEdgeAndReturnPoint(HitInfo info1, HitInfo info2) {
 		if(rayCount < 3) rayCount = 3;
