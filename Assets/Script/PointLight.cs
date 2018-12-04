@@ -5,11 +5,9 @@ using UnityEngine;
 
 [ExecuteInEditMode]
 public class PointLight : MonoBehaviour {
-	public float radius;
-	public int triangleCount;
+	public CircleHitPoint circleHitPoint = new CircleHitPoint();
 	public Color lightColor;
 	public Material lightMaterial;
-	public LayerMask colliderLayer;
 	public Material shadowMaterial;
 	[System.Serializable]
 	public struct MeshRenderInfo {
@@ -30,8 +28,6 @@ public class PointLight : MonoBehaviour {
 		}
     }
 	public new MeshRenderInfo light = new MeshRenderInfo();
-	public MeshRenderInfo shadow = new MeshRenderInfo();
-	public int shadowRayCount;
 	public Vector2 Position {
 		get {
 			return transform.position;
@@ -39,90 +35,138 @@ public class PointLight : MonoBehaviour {
 	}
 	void Update() {
 		light.Setup(this, "LightMesh", lightMaterial);
-		if(triangleCount < 3) {
-			triangleCount = 3;
-		}
 		light.mesh.Clear();
-		Vector3[] vertices = new Vector3[triangleCount + 2];
-		vertices[0] = Vector3.zero;
-		float stepAngle = Mathf.PI * 2 / triangleCount;
-		float currentAngle = 0;
-		for(int i = 0; i < triangleCount + 1; i++) {
-			currentAngle += stepAngle;
-			Vector2 dir = AngleToNormVec(currentAngle) * radius;
-			Vector3 dirV3 = new Vector3(dir.x, dir.y, 0);
-			Vector3 vertex = dirV3;
-			vertices[i + 1] = vertex;
+		List<Vector3> vertices = new List<Vector3>();
+		vertices.Add(Vector3.zero);
+		vertices.Add(Vector3.zero);
+		List<int> triangles = new List<int>();
+		List<Color> colors = new List<Color>();
+		colors.Add(lightColor);
+		colors.Add(Color.black);
+		circleHitPoint.center = Position;
+		CircleHitPoint.HitInfo? lastHitInfo = null;
+		Func<CircleHitPoint.HitInfo, Vector3> hitToVertex = info =>	{
+			Vector2 point = circleHitPoint.Position(info);
+			Vector3 pointV3 = new Vector3(point.x, point.y, transform.position.z);
+			return transform.InverseTransformPoint(pointV3);
+		};
+		CircleHitPoint.HitInfo firstHitInfo = new CircleHitPoint.HitInfo();
+		foreach(var hitPointInfo in circleHitPoint.RaycastPoints()) {
+			if(lastHitInfo != null) {
+				if(hitPointInfo.hit2D && lastHitInfo.Value.hit2D) {
+					triangles.Add(1);
+				}
+				else {
+					triangles.Add(0);
+				}
+				triangles.Add(vertices.Count + 0);
+				triangles.Add(vertices.Count - 1);
+				vertices.Add(hitToVertex(hitPointInfo));
+				colors.Add(Color.black);
+			}
+			else {
+				firstHitInfo = hitPointInfo;
+			}
+			lastHitInfo = hitPointInfo;
 		}
-		int[] triangles = new int[3 * triangleCount];
-		for(int i = 0; i < triangleCount; i++) {
-			triangles[3 * i] = 0;
-			triangles[3 * i + 1] = i + 2;
-			triangles[3 * i + 2] = i + 1;
+		if(firstHitInfo.hit2D && lastHitInfo.Value.hit2D) {
+			triangles.Add(1);
 		}
-
-		Color[] colors = new Color[triangleCount + 2];
-		colors[0] = lightColor;
-		for(int i = 0; i < triangleCount + 1; i++) {
-			colors[i + 1] = Color.black;
+		else {
+			triangles.Add(0);
 		}
-		light.mesh.vertices = vertices;
-		light.mesh.triangles = triangles;
-		light.mesh.colors = colors;
+		triangles.Add(2);
+		triangles.Add(vertices.Count - 1);
+		light.mesh.SetVertices(vertices);
+		light.mesh.SetTriangles(triangles, 0);
+		light.mesh.SetColors(colors);
 		light.mesh.RecalculateNormals();
-		light.filter.mesh = light.mesh;
-
-		UpdateShadowMesh();
 	}
 	Vector2 AngleToNormVec(float angle) {
 		return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
 	} 
-	void UpdateShadowMesh() {
-		shadow.Setup(this, "ShadowMesh", shadowMaterial);
-		shadow.mesh.Clear();
-		Vector2? lastHit = null;
-		Vector2 lastStart = Vector2.zero;
-		List<Vector3> vertices = new List<Vector3>();
-		List<int> triangles = new List<int>();
-		List<Color> colors = new List<Color>();
-		float stepAngle = Mathf.PI * 2 / shadowRayCount;
-		float currentAngle = 0;
-		Action<Vector2> addVertex = v2 => {
-			Vector3 vertex = new Vector3(v2.x, v2.y, transform.position.z);
-			vertex = transform.InverseTransformPoint(vertex);
-			vertices.Add(vertex);
-		};
-		for(int i = 0; i < shadowRayCount; i++) {
-			currentAngle += stepAngle;
-			Vector2 dir = -AngleToNormVec(currentAngle) * radius;
-			Vector2 start = Position - dir;
-			var hit = Physics2D.Raycast(start, dir, dir.magnitude, colliderLayer);
-			if(hit) {
-				addVertex(hit.point);
-				colors.Add(Color.black);
-				addVertex(start);
-				colors.Add(Color.black);
-				if(lastHit != null) {
-					int lastOrigin = vertices.Count - 4;
-					triangles.Add(lastOrigin + 0);
-					triangles.Add(lastOrigin + 3);
-					triangles.Add(lastOrigin + 1);
-					triangles.Add(lastOrigin + 0);
-					triangles.Add(lastOrigin + 2);
-					triangles.Add(lastOrigin + 3);
-				}
-				lastHit = hit.point;
-				lastStart = start;
+}
+
+[Serializable]
+public class CircleHitPoint {
+	public float radius;
+	public LayerMask colliderLayer;
+    public float binaryMaxDistance = 0.2f;
+    public float binaryMaxDegree = 5;
+    public float binaryMaxNormalDelta = 0.2f;
+	public int rayCount;
+	public Vector2 center;
+	public struct HitInfo {
+		public RaycastHit2D hit2D;
+		public float angle;
+
+        public HitInfo(RaycastHit2D hit2D, float angle)
+        {
+            this.hit2D = hit2D;
+            this.angle = angle;
+        }
+		public Vector2 Position(Vector2 center, float radius) {
+			if(hit2D) {
+				return hit2D.point;
 			}
 			else {
-				lastHit = null;
+				return center + CircleHitPoint.Degree2Dir(angle) * radius;
 			}
 		}
-		if(vertices.Count > 2) {
-			shadow.mesh.SetVertices(vertices);
-			shadow.mesh.SetTriangles(triangles, 0);
-			shadow.mesh.SetColors(colors);
-			shadow.mesh.RecalculateNormals();
+    }
+	
+	private static Vector2 Degree2Dir(float degree) {
+		float rayRad = Mathf.Deg2Rad * degree;
+		Vector2 dir = new Vector2(Mathf.Cos(rayRad), Mathf.Sin(rayRad));
+		return dir;
+	}
+	private RaycastHit2D AngleRayCast(float angle) {
+		var rayDir = Degree2Dir(angle);
+		var hit = Physics2D.Raycast(center, rayDir, radius, colliderLayer);
+		return hit;
+	}
+	public Vector2 Position(HitInfo info) {
+		return info.Position(center, radius);
+	}
+	private IEnumerable<HitInfo> BinaryFindEdgeAndReturnPoint(HitInfo info1, HitInfo info2) {
+		if(rayCount < 3) rayCount = 3;
+		Func<RaycastHit2D, float> hitDis = hit => hit.collider == null ? radius : hit.distance;
+		Func<RaycastHit2D, Vector2> hitNormal = hit => hit.collider == null ? Vector2.zero : hit.normal;
+		if((Mathf.Abs(hitDis(info1.hit2D) - hitDis(info2.hit2D)) < binaryMaxDistance 
+			&& (hitNormal(info1.hit2D) - hitNormal(info2.hit2D)).magnitude < binaryMaxNormalDelta) 
+			|| info2.angle - info1.angle < binaryMaxDegree) {
+			yield return new HitInfo(info2.hit2D, info2.angle);
+			yield break;
+		}
+		var midDegree = (info1.angle + info2.angle) / 2;
+		var midHit = AngleRayCast(midDegree);
+		var midHitInfo = new HitInfo(midHit, midDegree);
+		foreach(var hitInfo in BinaryFindEdgeAndReturnPoint(info1, midHitInfo)) {
+			yield return hitInfo;
+		}
+		foreach(var hitInfo in BinaryFindEdgeAndReturnPoint(midHitInfo, info2)) {
+			yield return hitInfo;
 		}
 	}
+    public IEnumerable<HitInfo> RaycastPoints() {
+        float deltaDegree = 360.0f / (float) rayCount;    
+        float lastDegree = 0;
+        RaycastHit2D lastHit = new RaycastHit2D();
+        for(int i = 0; i < rayCount + 1; i++) {
+            float rayDegree = deltaDegree * i;
+            var hit = AngleRayCast(rayDegree);
+            if(i > 0) {
+				foreach(var hitInfo in BinaryFindEdgeAndReturnPoint(new HitInfo(lastHit, lastDegree), new HitInfo(hit, rayDegree))) {
+					yield return hitInfo;
+				}
+            }
+            else {
+				yield return new HitInfo(hit, rayDegree);
+            }
+            lastHit = hit;
+            lastDegree = rayDegree;
+            
+
+        }
+    }
 }
