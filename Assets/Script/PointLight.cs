@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
 using UnityEngine;
 
 [ExecuteInEditMode]
@@ -9,33 +10,15 @@ public class PointLight : MonoBehaviour {
 	public Color lightColor;
 	public Material lightMaterial;
 	public Material shadowMaterial;
-	[System.Serializable]
-	public struct MeshRenderInfo {
-		public MeshFilter filter;
-		public Mesh mesh;
-
-		public void Setup(PointLight pointLight, string name, Material material) {
-			if(filter == null) {
-				GameObject go = new GameObject(name);
-				go.transform.SetParent(pointLight.transform, false);
-				filter = go.AddComponent<MeshFilter>();
-				var renderer = go.AddComponent<MeshRenderer>();
-				renderer.material = material;
-				mesh = new Mesh();
-				mesh.MarkDynamic();
-				filter.mesh = mesh;
-			}
-		}
-    }
-	public new MeshRenderInfo light = new MeshRenderInfo();
+	public Mesh lightMesh = null;
 	public Vector2 Position {
 		get {
 			return transform.position;
 		}
 	}
 	void Update() {
-		light.Setup(this, "LightMesh", lightMaterial);
-		light.mesh.Clear();
+		if(lightMesh == null) lightMesh = new Mesh();
+		lightMesh.Clear();
 		List<Vector3> vertices = new List<Vector3>();
 		vertices.Add(Vector3.zero);
 		List<int> triangles = new List<int>();
@@ -62,14 +45,17 @@ public class PointLight : MonoBehaviour {
 		triangles.Add(0);
 		triangles.Add(1);
 		triangles.Add(vertices.Count - 1);
-		light.mesh.SetVertices(vertices);
-		light.mesh.SetTriangles(triangles, 0);
-		light.mesh.SetColors(colors);
-		light.mesh.RecalculateNormals();
+		lightMesh.SetVertices(vertices);
+		lightMesh.SetTriangles(triangles, 0);
+		lightMesh.SetColors(colors);
+		lightMesh.RecalculateNormals();
 	}
 	Vector2 AngleToNormVec(float angle) {
 		return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
 	} 
+	public void DrawMesh(ref CommandBuffer commandBuffer) {
+		LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
+	}
 }
 
 [Serializable]
@@ -116,7 +102,6 @@ public class CircleHitPoint {
 	}
 	private IEnumerable<HitInfo> BinaryFindEdgeAndReturnPoint(HitInfo info1, HitInfo info2) {
 		if(rayCount < 3) rayCount = 3;
-		Func<RaycastHit2D, float> hitDis = hit => hit.collider == null ? radius : hit.distance;
 		Func<RaycastHit2D, RaycastHit2D, bool> hitSame = (hit1, hit2) => {
 			if(!hit1 && !hit2) {
 				return true;
@@ -164,7 +149,6 @@ public class CircleHitPoint {
             }
             lastHit = hit;
             lastDegree = rayDegree;
-            
 
         }
     }

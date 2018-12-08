@@ -18,17 +18,20 @@ public class LightPipe : RenderPipeline {
 			commandBuffer.name = "Setup";
 			commandBuffer.ClearRenderTarget(true, true, new Color(0,0,0,0));
 			renderContext.ExecuteCommandBuffer(commandBuffer);
+			PointLight[] lights = MonoBehaviour.FindObjectsOfType<PointLight>();
+
+			commandBuffer.name = "Light";
+			foreach(var light in lights) {
+				light.DrawMesh(ref commandBuffer);
+			}
+			renderContext.ExecuteCommandBuffer(commandBuffer);
 			commandBuffer.Clear();
-
-			var culled = new CullResults();
-			CullResults.Cull(camera, renderContext, out culled);
-
-			var settings = new DrawRendererSettings(camera, new ShaderPassName("Light"));
-			var filter = new FilterRenderersSettings(true);
-			renderContext.DrawRenderers(culled.visibleRenderers, ref settings, filter);
 			renderContext.Submit();
 		}
 
+	}
+	public static void DrawMesh(CommandBuffer commandBuffer, Mesh mesh, Transform transform, Material material) {
+		commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material);
 	}
 	public override void Dispose()
         {
