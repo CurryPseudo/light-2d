@@ -26,6 +26,7 @@
 			struct v2f
 			{
 				float4 vertex : SV_POSITION;
+                float2 world : TEXCOORD0;
 				UNITY_VERTEX_OUTPUT_STEREO
 			};
   
@@ -36,18 +37,16 @@
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
+                o.world = mul(unity_ObjectToWorld, v.vertex);
                 return o;
             }
                                                     
             float4 frag(v2f IN) : COLOR
             {
-                /*
-                float4 world = float4(0,0,0,0);
-                float2 dir = world.xy - _LightPos.xy;
+                float2 dir = IN.world - _LightPos;
                 float norm = length(dir) / _LightMaxDis;
                 norm = saturate(norm);
-                */
-                return _LightColor;
+                return float4(_LightColor.xyz * (1 - norm), 1);
             }
  
             ENDCG
