@@ -18,6 +18,7 @@ public class PointLight : MonoBehaviour {
 	}
 	void Update() {
 		if(lightMesh == null) lightMesh = new Mesh();
+		lightMesh.MarkDynamic();
 		lightMesh.Clear();
 		List<Vector3> vertices = new List<Vector3>{
 			new Vector3(-1, -1, 0),

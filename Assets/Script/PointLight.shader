@@ -46,7 +46,7 @@
                 float2 dir = IN.world - _LightPos;
                 float norm = length(dir) / _LightMaxDis;
                 norm = saturate(norm);
-                return float4(_LightColor.xyz * (1 - norm), 1);
+                return float4(_LightColor.xyz * smoothstep(0, 1, (1 - norm)), 1);
             }
  
             ENDCG
