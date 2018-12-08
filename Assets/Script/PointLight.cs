@@ -76,9 +76,7 @@ public class PointLight : MonoBehaviour {
 public class CircleHitPoint {
 	public float radius;
 	public LayerMask colliderLayer;
-    public float binaryMaxDistance = 0.2f;
     public float binaryMaxDegree = 5;
-    public float binaryMaxNormalDelta = 0.2f;
 	public int rayCount;
 	public Vector2 center;
 	public struct HitInfo {
@@ -119,9 +117,22 @@ public class CircleHitPoint {
 	private IEnumerable<HitInfo> BinaryFindEdgeAndReturnPoint(HitInfo info1, HitInfo info2) {
 		if(rayCount < 3) rayCount = 3;
 		Func<RaycastHit2D, float> hitDis = hit => hit.collider == null ? radius : hit.distance;
-		Func<RaycastHit2D, Vector2> hitNormal = hit => hit.collider == null ? Vector2.zero : hit.normal;
-		if((Mathf.Abs(hitDis(info1.hit2D) - hitDis(info2.hit2D)) < binaryMaxDistance 
-			&& (hitNormal(info1.hit2D) - hitNormal(info2.hit2D)).magnitude < binaryMaxNormalDelta) 
+		Func<RaycastHit2D, RaycastHit2D, bool> hitSame = (hit1, hit2) => {
+			if(!hit1 && !hit2) {
+				return true;
+			}
+			else if(hit1 ^ hit2) {
+				return false;
+			}
+			else {
+				return hit1.collider == hit2.collider;
+			}
+		};
+		Func<RaycastHit2D, RaycastHit2D, bool> normalSame = (hit1, hit2) => {
+
+			return (!hit1 && !hit2) || Mathf.Approximately((hit1.normal - hit2.normal).magnitude, 0);
+		};
+		if((hitSame(info1.hit2D, info2.hit2D) && normalSame(info1.hit2D, info2.hit2D)) 
 			|| info2.angle - info1.angle < binaryMaxDegree) {
 			yield return new HitInfo(info2.hit2D, info2.angle);
 			yield break;
