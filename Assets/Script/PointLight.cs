@@ -11,12 +11,13 @@ public class PointLight : MonoBehaviour {
 	public Material lightMaterial;
 	public Material shadowMaterial;
 	public Mesh lightMesh = null;
+	public Mesh shadowMesh = null;
 	public Vector2 Position {
 		get {
 			return transform.position;
 		}
 	}
-	void Update() {
+	void UpdateLightMesh() {
 		if(lightMesh == null) lightMesh = new Mesh();
 		lightMesh.MarkDynamic();
 		lightMesh.Clear();
@@ -34,14 +35,67 @@ public class PointLight : MonoBehaviour {
 		lightMesh.SetTriangles(triangles, 0);
 		lightMesh.RecalculateNormals();
 	}
-	Vector2 AngleToNormVec(float angle) {
-		return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-	} 
-	public void DrawMesh(ref CommandBuffer commandBuffer) {
+	void UpdateShadowMesh() {
+		if(shadowMesh == null) shadowMesh = new Mesh();
+		shadowMesh.MarkDynamic();
+		shadowMesh.Clear();
+		List<Vector3> vertices = new List<Vector3>();
+		List<int> triangles = new List<int>();
+		CircleHitPoint.HitInfo? previous = null;
+		foreach(var current in circleHitPoint.RaycastPoints()) {
+			if(!current.hit2D) {
+				previous = null;
+			}
+			else {
+				if(previous != null) {
+					// Consume previous is A, current is B
+					if(previous.Value.hit2D.collider == current.hit2D.collider) {
+						Vector2 A = circleHitPoint.Position(previous.Value);
+						Vector2 B = circleHitPoint.Position(current);
+						Vector2 C = circleHitPoint.center;
+						Vector2 AB = B - A;
+						Vector2 normal = new Vector2(AB.y, -AB.x).normalized;
+						Vector2 CA = A - C;
+						float dis = Vector2.Dot(CA, normal);
+						float scale = circleHitPoint.radius / dis;
+						Func<Vector2, Vector2> project = v2 => (v2 - C) * scale + C;
+						triangles.Add(vertices.Count + 0);
+						triangles.Add(vertices.Count + 3);
+						triangles.Add(vertices.Count + 2);
+						triangles.Add(vertices.Count + 0);
+						triangles.Add(vertices.Count + 1);
+						triangles.Add(vertices.Count + 3);
+						vertices.Add(WorldV2ToLocalV3(A));
+						vertices.Add(WorldV2ToLocalV3(B));
+						vertices.Add(WorldV2ToLocalV3(project(A)));
+						vertices.Add(WorldV2ToLocalV3(project(B)));
+					}
+				}
+				previous = current;
+			}
+		}
+		shadowMesh.SetVertices(vertices);
+		shadowMesh.SetTriangles(triangles, 0);
+		shadowMesh.RecalculateNormals();
+	}
+	Vector3 WorldV2ToLocalV3(Vector2 v2) {
+		return transform.InverseTransformPoint(v2.x, v2.y, transform.position.z);
+	}
+	void Update() {
+		circleHitPoint.center = Position;
+		UpdateLightMesh();
+		UpdateShadowMesh();
+
+	}
+	public void DrawLightMesh(ref CommandBuffer commandBuffer, int shadowMapId) {
 		commandBuffer.SetGlobalVector("_LightPos", Position);
 		commandBuffer.SetGlobalColor("_LightColor", lightColor);
 		commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
+		commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
 		LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
+	}
+	public void DrawShadowMesh(ref CommandBuffer commandBuffer) {
+		LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
 	}
 }
 
