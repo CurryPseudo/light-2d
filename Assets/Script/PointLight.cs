@@ -28,7 +28,7 @@ public class PointLight : MonoBehaviour {
 		for(int i = 0; i < vertices.Count; i++) {
 			vertices[i] *= circleHitPoint.radius;
 		}
-		List<int> triangles = new List<int>{0, 1, 2, 2, 1, 3};
+		List<int> triangles = new List<int>{0, 2, 1, 2, 3, 1};
 		lightMesh.SetVertices(vertices);
 		lightMesh.SetTriangles(triangles, 0);
 		lightMesh.RecalculateNormals();
