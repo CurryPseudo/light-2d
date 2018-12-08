@@ -18,14 +18,15 @@ public class LightPipe : RenderPipeline {
 			commandBuffer.name = "Setup";
 			commandBuffer.ClearRenderTarget(true, true, new Color(0,0,0,0));
 			renderContext.ExecuteCommandBuffer(commandBuffer);
+			commandBuffer.Clear();
 			PointLight[] lights = MonoBehaviour.FindObjectsOfType<PointLight>();
 
-			commandBuffer.name = "Light";
 			foreach(var light in lights) {
+				commandBuffer.name = "Light";
 				light.DrawMesh(ref commandBuffer);
+				renderContext.ExecuteCommandBuffer(commandBuffer);
+				commandBuffer.Clear();
 			}
-			renderContext.ExecuteCommandBuffer(commandBuffer);
-			commandBuffer.Clear();
 			renderContext.Submit();
 		}
 

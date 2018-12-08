@@ -19,41 +19,27 @@ public class PointLight : MonoBehaviour {
 	void Update() {
 		if(lightMesh == null) lightMesh = new Mesh();
 		lightMesh.Clear();
-		List<Vector3> vertices = new List<Vector3>();
-		vertices.Add(Vector3.zero);
-		List<int> triangles = new List<int>();
-		List<Color> colors = new List<Color>();
-		colors.Add(lightColor);
-		circleHitPoint.center = Position;
-		CircleHitPoint.HitInfo? lastHitInfo = null;
-		Func<CircleHitPoint.HitInfo, Vector3> hitToVertex = info =>	{
-			Vector2 point = circleHitPoint.Position(info);
-			Vector3 pointV3 = new Vector3(point.x, point.y, transform.position.z);
-			return transform.InverseTransformPoint(pointV3);
+		List<Vector3> vertices = new List<Vector3>{
+			new Vector3(-1, -1, 0),
+			new Vector3(1, -1, 0),
+			new Vector3(-1, 1, 0),
+			new Vector3(1, 1, 0),
 		};
-		foreach(var hitPointInfo in circleHitPoint.RaycastPoints()) {
-			if(lastHitInfo != null) {
-				triangles.Add(0);
-				triangles.Add(vertices.Count + 0);
-				triangles.Add(vertices.Count - 1);
-				vertices.Add(hitToVertex(hitPointInfo));
-				float normedRadius = circleHitPoint.NormedHitRadius(hitPointInfo);
-				colors.Add(Color.Lerp(lightColor, Color.black, normedRadius));
-			}
-			lastHitInfo = hitPointInfo;
+		for(int i = 0; i < vertices.Count; i++) {
+			vertices[i] *= circleHitPoint.radius;
 		}
-		triangles.Add(0);
-		triangles.Add(1);
-		triangles.Add(vertices.Count - 1);
+		List<int> triangles = new List<int>{0, 1, 2, 2, 1, 3};
 		lightMesh.SetVertices(vertices);
 		lightMesh.SetTriangles(triangles, 0);
-		lightMesh.SetColors(colors);
 		lightMesh.RecalculateNormals();
 	}
 	Vector2 AngleToNormVec(float angle) {
 		return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
 	} 
 	public void DrawMesh(ref CommandBuffer commandBuffer) {
+		commandBuffer.SetGlobalVector("_LightPos", Position);
+		commandBuffer.SetGlobalColor("_LightColor", lightColor);
+		commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
 		LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
 	}
 }
