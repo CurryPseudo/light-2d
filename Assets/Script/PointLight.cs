@@ -206,6 +206,7 @@ public class CircleHitPoint {
 		foreach(var current in infos) {
 			if(previous != null) {
 				if(!current.hit2D) {
+					yield return new Edge(Position(previous.Value), Position(last.Value));
 					previous = null;
 					last = null;
 				}
