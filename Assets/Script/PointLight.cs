@@ -11,6 +11,7 @@ public class PointLight : MonoBehaviour {
 	public Color lightColor;
 	public Material lightMaterial;
 	public Material shadowMaterial;
+	public Mesh shadowMesh = null;
 	public Vector2 Position {
 		get {
 			return transform.position;
@@ -93,6 +94,7 @@ public class PointLight : MonoBehaviour {
 		shadowMesh.SetTriangles(triangles, 0);
 		shadowMesh.SetUVs(0, uvs);
 		shadowMesh.RecalculateNormals();
+		this.shadowMesh = shadowMesh;
 		return shadowMesh;
 	}
 	Vector3 WorldV2ToLocalV3(Vector2 v2) {
