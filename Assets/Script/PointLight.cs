@@ -83,7 +83,6 @@ public class PointLight : MonoBehaviour {
 			vertices.Add(WorldV2ToLocalV3(B));
 			uvs.Add(new Vector2(0,0));
 			vertices.Add(WorldV2ToLocalV3(project(CAO, A)));
-			uvs.Add(new Vector2(1,1));
 			if(first) {
 				uvs.Add(new Vector2(1,1));
 			}
@@ -103,6 +102,10 @@ public class PointLight : MonoBehaviour {
 			}
 		};
 		foreach(var edgeGroup in circleHitPoint.ExtractEdge(circleHitPoint.RaycastPoints())) {
+			foreach(var edge in edgeGroup) {
+				createEdgeShadow(edge, true, true);
+			}
+			/*
 			if(edgeGroup.Count == 1) {
 				createEdgeShadow(edgeGroup[0], true, true);
 			}
@@ -113,6 +116,7 @@ public class PointLight : MonoBehaviour {
 				}
 				createEdgeShadow(edgeGroup[edgeGroup.Count - 1], false, true);
 			}
+			*/
 		}
 		shadowMesh.SetVertices(vertices);
 		shadowMesh.SetTriangles(triangles, 0);
