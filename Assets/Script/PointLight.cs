@@ -6,6 +6,7 @@ using UnityEngine;
 
 [ExecuteInEditMode]
 public class PointLight : MonoBehaviour {
+	public float volumeRadius = 0.3f;
 	public CircleHitPoint circleHitPoint = new CircleHitPoint();
 	public Color lightColor;
 	public Material lightMaterial;
@@ -42,42 +43,43 @@ public class PointLight : MonoBehaviour {
 		List<Vector3> vertices = new List<Vector3>();
 		List<Vector2> uvs = new List<Vector2>();
 		List<int> triangles = new List<int>();
-		CircleHitPoint.HitInfo? previous = null;
-		foreach(var current in circleHitPoint.RaycastPoints()) {
-			if(!current.hit2D) {
-				previous = null;
-			}
-			else {
-				if(previous != null) {
-					// Consume previous is A, current is B
-					if(previous.Value.hit2D.collider == current.hit2D.collider) {
-						Vector2 A = circleHitPoint.Position(previous.Value);
-						Vector2 B = circleHitPoint.Position(current);
-						Vector2 C = circleHitPoint.center;
-						Vector2 AB = B - A;
-						Vector2 normal = new Vector2(AB.y, -AB.x).normalized;
-						Vector2 CA = A - C;
-						float dis = Vector2.Dot(CA, normal);
-						float scale = circleHitPoint.radius / dis;
-						Func<Vector2, Vector2> project = v2 => (v2 - C) * scale + C;
-						triangles.Add(vertices.Count + 0);
-						triangles.Add(vertices.Count + 3);
-						triangles.Add(vertices.Count + 2);
-						triangles.Add(vertices.Count + 0);
-						triangles.Add(vertices.Count + 1);
-						triangles.Add(vertices.Count + 3);
-						vertices.Add(WorldV2ToLocalV3(A));
-						uvs.Add(new Vector2(0,0));
-						vertices.Add(WorldV2ToLocalV3(B));
-						uvs.Add(new Vector2(0,0));
-						vertices.Add(WorldV2ToLocalV3(project(A)));
-						uvs.Add(new Vector2(0,1));
-						vertices.Add(WorldV2ToLocalV3(project(B)));
-						uvs.Add(new Vector2(0,1));
-					}
-				}
-				previous = current;
-			}
+		Func<Vector2, Vector2, bool> vectorEqual = (v1, v2) => Mathf.Approximately(0, (v1 - v2).magnitude);
+		foreach(var edge in circleHitPoint.ExtractEdge(circleHitPoint.RaycastPoints())) {
+			Vector2 A = edge.A;
+			Vector2 B = edge.B;
+			Vector2 C = circleHitPoint.center;
+			Vector2 AB = B - A;
+			Vector2 Cb = C + AB.normalized * volumeRadius;
+			Vector2 Ca = C - AB.normalized * volumeRadius;
+			Vector2 normal = new Vector2(AB.y, -AB.x).normalized;
+			Vector2 CA = A - C;
+			float dis = Vector2.Dot(CA, normal);
+			float scale = circleHitPoint.radius / dis;
+			Func<Vector2, Vector2, Vector2> project = (c, v2) => (v2 - c) * scale + c;
+			triangles.Add(vertices.Count + 0);
+			triangles.Add(vertices.Count + 3);
+			triangles.Add(vertices.Count + 2);
+			triangles.Add(vertices.Count + 1);
+			triangles.Add(vertices.Count + 5);
+			triangles.Add(vertices.Count + 4);
+			triangles.Add(vertices.Count + 0);
+			triangles.Add(vertices.Count + 1);
+			triangles.Add(vertices.Count + 4);
+			triangles.Add(vertices.Count + 0);
+			triangles.Add(vertices.Count + 4);
+			triangles.Add(vertices.Count + 3);
+			vertices.Add(WorldV2ToLocalV3(A));
+			uvs.Add(new Vector2(0,0));
+			vertices.Add(WorldV2ToLocalV3(B));
+			uvs.Add(new Vector2(0,0));
+			vertices.Add(WorldV2ToLocalV3(project(Cb, A)));
+			uvs.Add(new Vector2(1,1));
+			vertices.Add(WorldV2ToLocalV3(project(Ca, A)));
+			uvs.Add(new Vector2(0,1));
+			vertices.Add(WorldV2ToLocalV3(project(Cb, B)));
+			uvs.Add(new Vector2(0,1));
+			vertices.Add(WorldV2ToLocalV3(project(Ca, B)));
+			uvs.Add(new Vector2(1,1));
 		}
 		shadowMesh.SetVertices(vertices);
 		shadowMesh.SetTriangles(triangles, 0);
@@ -147,24 +149,23 @@ public class CircleHitPoint {
 	public float NormedHitRadius(HitInfo info) {
 		return Mathf.Clamp01((Position(info) - center).magnitude / radius);
 	}
+	private bool HitSame(RaycastHit2D hit1, RaycastHit2D hit2) {
+		if(!hit1 && !hit2) {
+			return true;
+		}
+		else if(hit1 ^ hit2) {
+			return false;
+		}
+		else {
+			return hit1.collider == hit2.collider;
+		}
+	}
+	private bool NormalSame(RaycastHit2D hit1, RaycastHit2D hit2) {
+		return (!hit1 && !hit2) || Mathf.Approximately((hit1.normal - hit2.normal).magnitude, 0);
+	}
 	private IEnumerable<HitInfo> BinaryFindEdgeAndReturnPoint(HitInfo info1, HitInfo info2) {
 		if(rayCount < 3) rayCount = 3;
-		Func<RaycastHit2D, RaycastHit2D, bool> hitSame = (hit1, hit2) => {
-			if(!hit1 && !hit2) {
-				return true;
-			}
-			else if(hit1 ^ hit2) {
-				return false;
-			}
-			else {
-				return hit1.collider == hit2.collider;
-			}
-		};
-		Func<RaycastHit2D, RaycastHit2D, bool> normalSame = (hit1, hit2) => {
-
-			return (!hit1 && !hit2) || Mathf.Approximately((hit1.normal - hit2.normal).magnitude, 0);
-		};
-		if((hitSame(info1.hit2D, info2.hit2D) && normalSame(info1.hit2D, info2.hit2D)) 
+		if((HitSame(info1.hit2D, info2.hit2D) && NormalSame(info1.hit2D, info2.hit2D)) 
 			|| info2.angle - info1.angle < binaryMaxDegree) {
 			yield return new HitInfo(info2.hit2D, info2.angle);
 			yield break;
@@ -198,5 +199,44 @@ public class CircleHitPoint {
             lastDegree = rayDegree;
 
         }
+    }
+	public IEnumerable<Edge> ExtractEdge(IEnumerable<HitInfo> infos) {
+		HitInfo? previous = null;
+		HitInfo? last = null;
+		foreach(var current in infos) {
+			if(previous != null) {
+				if(!current.hit2D) {
+					previous = null;
+					last = null;
+				}
+				else {
+					if(HitSame(previous.Value.hit2D, current.hit2D) && NormalSame(previous.Value.hit2D, current.hit2D)) {
+						last = current;
+					}
+					else {
+						yield return new Edge(Position(previous.Value), Position(last.Value));
+						previous = current;
+						last = current;
+					}
+				}
+			}
+			else {
+				if(current.hit2D) {
+					previous = current;
+					last = current;
+				}
+			}
+		}
+		yield break;
+	}
+}
+public struct Edge {
+	public Vector2 A;
+	public Vector2 B;
+
+    public Edge(Vector2 a, Vector2 b)
+    {
+        A = a;
+        B = b;
     }
 }
