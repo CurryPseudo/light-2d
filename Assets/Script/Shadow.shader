@@ -10,7 +10,7 @@
         {
             ZWrite Off
             ColorMask R
-            BlendOp Sub
+            Blend One One
 
             CGPROGRAM
             #pragma vertex vert
@@ -44,7 +44,7 @@
             float4 frag(v2f IN) : COLOR
             {
                 
-                return float4(smoothstep(0, 1, IN.uv.x / IN.uv.y),1,1,1);
+                return float4(smoothstep(0, 1, 1 - IN.uv.x / IN.uv.y),1,1,1);
             }
 
             ENDCG

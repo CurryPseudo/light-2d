@@ -50,7 +50,7 @@
                 float norm = length(dir) / _LightMaxDis;
                 norm = saturate(norm);
                 float4 c = float4(_LightColor.xyz * smoothstep(0, 1, (1 - norm)), 1);
-                c.xyz *= tex2D(_ShadowMap, IN.screen.xy).r;
+                c.xyz *= 1 - tex2D(_ShadowMap, IN.screen.xy).r;
                 return c;
             }
  
