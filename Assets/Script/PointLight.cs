@@ -11,8 +11,6 @@ public class PointLight : MonoBehaviour {
 	public Color lightColor;
 	public Material lightMaterial;
 	public Material shadowMaterial;
-	public Mesh lightMesh = null;
-	public Mesh shadowMesh = null;
 	public Vector2 Position {
 		get {
 			return transform.position;
@@ -23,8 +21,8 @@ public class PointLight : MonoBehaviour {
 		Gizmos.DrawWireSphere(Position, volumeRadius);
 		
 	}
-	void UpdateLightMesh() {
-		if(lightMesh == null) lightMesh = new Mesh();
+	Mesh GenLightMesh() {
+		Mesh lightMesh = new Mesh();
 		lightMesh.MarkDynamic();
 		lightMesh.Clear();
 		List<Vector3> vertices = new List<Vector3>{
@@ -40,9 +38,10 @@ public class PointLight : MonoBehaviour {
 		lightMesh.SetVertices(vertices);
 		lightMesh.SetTriangles(triangles, 0);
 		lightMesh.RecalculateNormals();
+		return lightMesh;
 	}
-	void UpdateShadowMesh() {
-		if(shadowMesh == null) shadowMesh = new Mesh();
+	Mesh GenShadowMesh() {
+		Mesh shadowMesh = new Mesh();
 		shadowMesh.MarkDynamic();
 		shadowMesh.Clear();
 		List<Vector3> vertices = new List<Vector3>();
@@ -94,29 +93,25 @@ public class PointLight : MonoBehaviour {
 		shadowMesh.SetTriangles(triangles, 0);
 		shadowMesh.SetUVs(0, uvs);
 		shadowMesh.RecalculateNormals();
+		return shadowMesh;
 	}
 	Vector3 WorldV2ToLocalV3(Vector2 v2) {
 		return transform.InverseTransformPoint(v2.x, v2.y, transform.position.z);
 	}
 	void Update() {
 		circleHitPoint.center = Position;
-		UpdateLightMesh();
-		UpdateShadowMesh();
-
 	}
 	public void DrawLightMesh(ref CommandBuffer commandBuffer, int shadowMapId) {
-		if(lightMesh != null) {
-			commandBuffer.SetGlobalVector("_LightPos", Position);
-			commandBuffer.SetGlobalColor("_LightColor", lightColor);
-			commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
-			commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
-			LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
-		}
+		Mesh lightMesh = GenLightMesh();
+		commandBuffer.SetGlobalVector("_LightPos", Position);
+		commandBuffer.SetGlobalColor("_LightColor", lightColor);
+		commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
+		commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
+		LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
 	}
 	public void DrawShadowMesh(ref CommandBuffer commandBuffer) {
-		if(shadowMesh != null) {
-			LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
-		}
+		Mesh shadowMesh = GenShadowMesh();
+		LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
 	}
 }
 
