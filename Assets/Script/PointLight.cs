@@ -44,7 +44,7 @@ public class PointLight : MonoBehaviour {
 		List<Vector2> uvs = new List<Vector2>();
 		List<int> triangles = new List<int>();
 		Func<Vector2, Vector2, bool> vectorEqual = (v1, v2) => Mathf.Approximately(0, (v1 - v2).magnitude);
-		foreach(var edge in circleHitPoint.ExtractEdge(circleHitPoint.RaycastPoints())) {
+		System.Action<Edge, bool, bool> createEdgeShadow = (edge, first, last) => {
 			Vector2 A = edge.A;
 			Vector2 B = edge.B;
 			Vector2 C = circleHitPoint.center;
@@ -73,13 +73,35 @@ public class PointLight : MonoBehaviour {
 			vertices.Add(WorldV2ToLocalV3(B));
 			uvs.Add(new Vector2(0,0));
 			vertices.Add(WorldV2ToLocalV3(project(Cb, A)));
-			uvs.Add(new Vector2(1,1));
+			if(first) {
+				uvs.Add(new Vector2(1,1));
+			}
+			else {
+				uvs.Add(new Vector2(0,1));
+			}
 			vertices.Add(WorldV2ToLocalV3(project(Ca, A)));
 			uvs.Add(new Vector2(0,1));
 			vertices.Add(WorldV2ToLocalV3(project(Cb, B)));
 			uvs.Add(new Vector2(0,1));
 			vertices.Add(WorldV2ToLocalV3(project(Ca, B)));
-			uvs.Add(new Vector2(1,1));
+			if(last) {
+				uvs.Add(new Vector2(1,1));
+			}
+			else {
+				uvs.Add(new Vector2(0,1));
+			}
+		};
+		foreach(var edgeGroup in circleHitPoint.ExtractEdge(circleHitPoint.RaycastPoints())) {
+			if(edgeGroup.Count == 1) {
+				createEdgeShadow(edgeGroup[0], true, true);
+			}
+			else if(edgeGroup.Count > 0){
+				createEdgeShadow(edgeGroup[0], true, false);
+				for(int i = 1; i < edgeGroup.Count - 1; i++) {
+				createEdgeShadow(edgeGroup[i], false, false);
+				}
+				createEdgeShadow(edgeGroup[edgeGroup.Count - 1], false, true);
+			}
 		}
 		shadowMesh.SetVertices(vertices);
 		shadowMesh.SetTriangles(triangles, 0);
@@ -200,12 +222,16 @@ public class CircleHitPoint {
 
         }
     }
-	public IEnumerable<Edge> ExtractEdge(IEnumerable<HitInfo> infos) {
+	public IEnumerable<List<Edge>> ExtractEdge(IEnumerable<HitInfo> infos) {
 		HitInfo? previous = null;
 		HitInfo? last = null;
+		List<Edge> edgeGroup = new List<Edge>();
 		foreach(var current in infos) {
 			if(previous != null) {
 				if(!current.hit2D) {
+					edgeGroup.Add(new Edge(Position(previous.Value), Position(last.Value)));
+					yield return edgeGroup;
+					edgeGroup.Clear();
 					previous = null;
 					last = null;
 				}
@@ -214,7 +240,7 @@ public class CircleHitPoint {
 						last = current;
 					}
 					else {
-						yield return new Edge(Position(previous.Value), Position(last.Value));
+						edgeGroup.Add(new Edge(Position(previous.Value), Position(last.Value)));
 						previous = current;
 						last = current;
 					}
