@@ -40,6 +40,7 @@ public class PointLight : MonoBehaviour {
 		shadowMesh.MarkDynamic();
 		shadowMesh.Clear();
 		List<Vector3> vertices = new List<Vector3>();
+		List<Vector2> uvs = new List<Vector2>();
 		List<int> triangles = new List<int>();
 		CircleHitPoint.HitInfo? previous = null;
 		foreach(var current in circleHitPoint.RaycastPoints()) {
@@ -66,9 +67,13 @@ public class PointLight : MonoBehaviour {
 						triangles.Add(vertices.Count + 1);
 						triangles.Add(vertices.Count + 3);
 						vertices.Add(WorldV2ToLocalV3(A));
+						uvs.Add(new Vector2(0,0));
 						vertices.Add(WorldV2ToLocalV3(B));
+						uvs.Add(new Vector2(0,0));
 						vertices.Add(WorldV2ToLocalV3(project(A)));
+						uvs.Add(new Vector2(0,1));
 						vertices.Add(WorldV2ToLocalV3(project(B)));
+						uvs.Add(new Vector2(0,1));
 					}
 				}
 				previous = current;
@@ -76,6 +81,7 @@ public class PointLight : MonoBehaviour {
 		}
 		shadowMesh.SetVertices(vertices);
 		shadowMesh.SetTriangles(triangles, 0);
+		shadowMesh.SetUVs(0, uvs);
 		shadowMesh.RecalculateNormals();
 	}
 	Vector3 WorldV2ToLocalV3(Vector2 v2) {
