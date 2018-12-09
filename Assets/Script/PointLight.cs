@@ -48,7 +48,6 @@ public class PointLight : MonoBehaviour {
 		List<Vector3> vertices = new List<Vector3>();
 		List<Vector2> uvs = new List<Vector2>();
 		List<int> triangles = new List<int>();
-		Func<Vector2, Vector2, bool> vectorEqual = (v1, v2) => Mathf.Approximately(0, (v1 - v2).magnitude);
 		System.Action<Edge, bool, bool> createEdgeShadow = (edge, first, last) => {
 			Vector2 A = edge.A;
 			Vector2 B = edge.B;
@@ -133,14 +132,18 @@ public class PointLight : MonoBehaviour {
 
 	}
 	public void DrawLightMesh(ref CommandBuffer commandBuffer, int shadowMapId) {
-		commandBuffer.SetGlobalVector("_LightPos", Position);
-		commandBuffer.SetGlobalColor("_LightColor", lightColor);
-		commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
-		commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
-		LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
+		if(lightMesh != null) {
+			commandBuffer.SetGlobalVector("_LightPos", Position);
+			commandBuffer.SetGlobalColor("_LightColor", lightColor);
+			commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
+			commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
+			LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
+		}
 	}
 	public void DrawShadowMesh(ref CommandBuffer commandBuffer) {
-		LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
+		if(shadowMesh != null) {
+			LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
+		}
 	}
 }
 

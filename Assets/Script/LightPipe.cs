@@ -36,6 +36,8 @@ public class LightPipe : RenderPipeline {
 
 				commandBuffer.SetRenderTarget(shadowMapId);
 				commandBuffer.ClearRenderTarget(false, true, Color.black);
+				// I dont know why, I need to clear render target double time to actually clear it on Mac OS.
+				commandBuffer.ClearRenderTarget(false, true, Color.black);
 				light.DrawShadowMesh(ref commandBuffer);
 
 				commandBuffer.SetRenderTarget(lightMapId);
