@@ -49,11 +49,17 @@ public class PointLight : MonoBehaviour {
 			Vector2 B = edge.B;
 			Vector2 C = circleHitPoint.center;
 			Vector2 AB = B - A;
-			Vector2 Cb = C + AB.normalized * volumeRadius;
-			Vector2 Ca = C - AB.normalized * volumeRadius;
-			Vector2 normal = new Vector2(AB.y, -AB.x).normalized;
+			Vector2 ABnormal = new Vector2(AB.y, -AB.x).normalized;
 			Vector2 CA = A - C;
-			float dis = Vector2.Dot(CA, normal);
+			Func<Vector2, Vector2, Vector2> normal = (c, p) => {
+				Vector2 dir = p - c;
+				return new Vector2(-dir.y, dir.x).normalized;
+			};
+			Vector2 CAO = normal(C, A) * volumeRadius + C;
+			Vector2 CAI = -normal(C, A) * volumeRadius + C;
+			Vector2 CBI = normal(C, B) * volumeRadius + C;
+			Vector2 CBO = -normal(C, B) * volumeRadius + C;
+			float dis = Vector2.Dot(CA, ABnormal);
 			float scale = circleHitPoint.radius / dis;
 			Func<Vector2, Vector2, Vector2> project = (c, v2) => (v2 - c) * scale + c;
 			triangles.Add(vertices.Count + 0);
@@ -72,13 +78,13 @@ public class PointLight : MonoBehaviour {
 			uvs.Add(new Vector2(0,0));
 			vertices.Add(WorldV2ToLocalV3(B));
 			uvs.Add(new Vector2(0,0));
-			vertices.Add(WorldV2ToLocalV3(project(Cb, A)));
+			vertices.Add(WorldV2ToLocalV3(project(CAO, A)));
 			uvs.Add(new Vector2(1,1));
-			vertices.Add(WorldV2ToLocalV3(project(Ca, A)));
+			vertices.Add(WorldV2ToLocalV3(project(CAI, A)));
 			uvs.Add(new Vector2(0,1));
-			vertices.Add(WorldV2ToLocalV3(project(Cb, B)));
+			vertices.Add(WorldV2ToLocalV3(project(CBI, B)));
 			uvs.Add(new Vector2(0,1));
-			vertices.Add(WorldV2ToLocalV3(project(Ca, B)));
+			vertices.Add(WorldV2ToLocalV3(project(CBO, B)));
 			uvs.Add(new Vector2(1,1));
 		}
 		shadowMesh.SetVertices(vertices);
