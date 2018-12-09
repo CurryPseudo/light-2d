@@ -44,7 +44,7 @@ public class PointLight : MonoBehaviour {
 		List<Vector2> uvs = new List<Vector2>();
 		List<int> triangles = new List<int>();
 		Func<Vector2, Vector2, bool> vectorEqual = (v1, v2) => Mathf.Approximately(0, (v1 - v2).magnitude);
-		foreach(var edge in circleHitPoint.ExtractEdge(circleHitPoint.RaycastPoints())) {
+		foreach(var edge in circleHitPoint.ExtractEdge()) {
 			Vector2 A = edge.A;
 			Vector2 B = edge.B;
 			Vector2 C = circleHitPoint.center;
@@ -111,8 +111,6 @@ public class PointLight : MonoBehaviour {
 public class CircleHitPoint {
 	public float radius;
 	public LayerMask colliderLayer;
-    public float binaryMaxDegree = 5;
-	public int rayCount;
 	public Vector2 center;
 	public struct HitInfo {
 		public RaycastHit2D hit2D;
@@ -163,67 +161,43 @@ public class CircleHitPoint {
 	private bool NormalSame(RaycastHit2D hit1, RaycastHit2D hit2) {
 		return (!hit1 && !hit2) || Mathf.Approximately((hit1.normal - hit2.normal).magnitude, 0);
 	}
-	private IEnumerable<HitInfo> BinaryFindEdgeAndReturnPoint(HitInfo info1, HitInfo info2) {
-		if(rayCount < 3) rayCount = 3;
-		if((HitSame(info1.hit2D, info2.hit2D) && NormalSame(info1.hit2D, info2.hit2D)) 
-			|| info2.angle - info1.angle < binaryMaxDegree) {
-			yield return new HitInfo(info2.hit2D, info2.angle);
-			yield break;
+	private Edge? GetValidEdge(PolygonCollider2D polygon, Vector2 previous, Vector2 current) {
+		previous = polygon.transform.TransformPoint(previous + polygon.offset);
+		current = polygon.transform.TransformPoint(current + polygon.offset);
+		Vector2 dir = current - previous;
+		Vector2 normal = new Vector2(-dir.y, dir.x).normalized;
+		bool front = Vector2.Dot((current - center), normal) > 0;
+		if(front) {
+			return new Edge(current, previous);
 		}
-		var midDegree = (info1.angle + info2.angle) / 2;
-		var midHit = AngleRayCast(midDegree);
-		var midHitInfo = new HitInfo(midHit, midDegree);
-		foreach(var hitInfo in BinaryFindEdgeAndReturnPoint(info1, midHitInfo)) {
-			yield return hitInfo;
-		}
-		foreach(var hitInfo in BinaryFindEdgeAndReturnPoint(midHitInfo, info2)) {
-			yield return hitInfo;
-		}
+		return null;
 	}
-    public IEnumerable<HitInfo> RaycastPoints() {
-        float deltaDegree = 360.0f / (float) rayCount;    
-        float lastDegree = 0;
-        RaycastHit2D lastHit = new RaycastHit2D();
-        for(int i = 0; i < rayCount + 1; i++) {
-            float rayDegree = deltaDegree * i;
-            var hit = AngleRayCast(rayDegree);
-            if(i > 0) {
-				foreach(var hitInfo in BinaryFindEdgeAndReturnPoint(new HitInfo(lastHit, lastDegree), new HitInfo(hit, rayDegree))) {
-					yield return hitInfo;
-				}
-            }
-            else {
-				yield return new HitInfo(hit, rayDegree);
-            }
-            lastHit = hit;
-            lastDegree = rayDegree;
-
-        }
-    }
-	public IEnumerable<Edge> ExtractEdge(IEnumerable<HitInfo> infos) {
-		HitInfo? previous = null;
-		HitInfo? last = null;
-		foreach(var current in infos) {
-			if(previous != null) {
-				if(!current.hit2D) {
-					previous = null;
-					last = null;
-				}
-				else {
-					if(HitSame(previous.Value.hit2D, current.hit2D) && NormalSame(previous.Value.hit2D, current.hit2D)) {
-						last = current;
+	public IEnumerable<Edge> ExtractEdge() {
+		Collider2D[] colliders = Physics2D.OverlapCircleAll(center, radius);
+		foreach(var collider in colliders) {
+			PolygonCollider2D polygon = collider.GetComponent<PolygonCollider2D>();
+			if(polygon != null) {
+				for(int i = 0; i < polygon.pathCount; i++) {
+					Vector2? first = null;
+					Vector2? last = null;
+					foreach(var point in polygon.GetPath(i)) {
+						if(first == null) {
+							first = point;
+						}
+						if(last != null) {
+							Edge? edge = GetValidEdge(polygon, last.Value, point);
+							if(edge != null) {
+								yield return edge.Value;
+							}
+						}
+						last = point;
 					}
-					else {
-						yield return new Edge(Position(previous.Value), Position(last.Value));
-						previous = current;
-						last = current;
+					if(first != null && first.Value != last.Value) {
+							Edge? edge = GetValidEdge(polygon, last.Value, first.Value);
+							if(edge != null) {
+								yield return edge.Value;
+							}
 					}
-				}
-			}
-			else {
-				if(current.hit2D) {
-					previous = current;
-					last = current;
 				}
 			}
 		}
