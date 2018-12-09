@@ -18,6 +18,11 @@ public class PointLight : MonoBehaviour {
 			return transform.position;
 		}
 	}
+	void OnDrawGizmos()
+	{
+		Gizmos.DrawWireSphere(Position, volumeRadius);
+		
+	}
 	void UpdateLightMesh() {
 		if(lightMesh == null) lightMesh = new Mesh();
 		lightMesh.MarkDynamic();
@@ -48,19 +53,18 @@ public class PointLight : MonoBehaviour {
 			Vector2 A = edge.A;
 			Vector2 B = edge.B;
 			Vector2 C = circleHitPoint.center;
-			Vector2 AB = B - A;
-			Vector2 ABnormal = new Vector2(AB.y, -AB.x).normalized;
-			Vector2 CA = A - C;
 			Func<Vector2, Vector2, Vector2> normal = (c, p) => {
 				Vector2 dir = p - c;
 				return new Vector2(-dir.y, dir.x).normalized;
 			};
+			Vector2 ABnormal = -normal(A, B);
+			Vector2 CA = A - C;
+			float dis = Vector2.Dot(CA, ABnormal);
+			float scale = circleHitPoint.radius / dis;
 			Vector2 CAO = normal(C, A) * volumeRadius + C;
 			Vector2 CAI = -normal(C, A) * volumeRadius + C;
 			Vector2 CBI = normal(C, B) * volumeRadius + C;
 			Vector2 CBO = -normal(C, B) * volumeRadius + C;
-			float dis = Vector2.Dot(CA, ABnormal);
-			float scale = circleHitPoint.radius / dis;
 			Func<Vector2, Vector2, Vector2> project = (c, v2) => (v2 - c) * scale + c;
 			triangles.Add(vertices.Count + 0);
 			triangles.Add(vertices.Count + 3);
