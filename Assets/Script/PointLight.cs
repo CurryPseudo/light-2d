@@ -105,14 +105,18 @@ public class PointLight : MonoBehaviour {
 
 	}
 	public void DrawLightMesh(ref CommandBuffer commandBuffer, int shadowMapId) {
-		commandBuffer.SetGlobalVector("_LightPos", Position);
-		commandBuffer.SetGlobalColor("_LightColor", lightColor);
-		commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
-		commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
-		LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
+		if(lightMesh != null) {
+			commandBuffer.SetGlobalVector("_LightPos", Position);
+			commandBuffer.SetGlobalColor("_LightColor", lightColor);
+			commandBuffer.SetGlobalFloat("_LightMaxDis", circleHitPoint.radius);
+			commandBuffer.SetGlobalTexture("_ShadowMap", shadowMapId);
+			LightPipe.DrawMesh(commandBuffer, lightMesh, transform, lightMaterial);
+		}
 	}
 	public void DrawShadowMesh(ref CommandBuffer commandBuffer) {
-		LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
+		if(shadowMesh != null) {
+			LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
+		}
 	}
 }
 
