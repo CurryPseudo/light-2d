@@ -35,7 +35,7 @@ public class LightPipe : RenderPipeline {
 				commandBuffer.name = "Light";
 
 				commandBuffer.SetRenderTarget(shadowMapId);
-				commandBuffer.ClearRenderTarget(false, true, Color.white);
+				commandBuffer.ClearRenderTarget(false, true, Color.black);
 				light.DrawShadowMesh(ref commandBuffer);
 
 				commandBuffer.SetRenderTarget(lightMapId);
