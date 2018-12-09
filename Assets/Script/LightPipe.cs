@@ -27,7 +27,7 @@ public class LightPipe : RenderPipeline {
 			commandBuffer.GetTemporaryRT(lightMapId, lightMapDesc);
 
 			commandBuffer.SetRenderTarget(lightMapId);
-			commandBuffer.ClearRenderTarget(true, true, new Color(0,0,0,0));
+			commandBuffer.ClearRenderTarget(true, true, Color.black);
 
 			PointLight[] lights = MonoBehaviour.FindObjectsOfType<PointLight>();
 

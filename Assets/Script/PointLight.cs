@@ -18,6 +18,11 @@ public class PointLight : MonoBehaviour {
 			return transform.position;
 		}
 	}
+	void OnDrawGizmos()
+	{
+		Gizmos.DrawWireSphere(Position, volumeRadius);
+		
+	}
 	void UpdateLightMesh() {
 		if(lightMesh == null) lightMesh = new Mesh();
 		lightMesh.MarkDynamic();
@@ -47,16 +52,19 @@ public class PointLight : MonoBehaviour {
 			Vector2 A = edge.A;
 			Vector2 B = edge.B;
 			Vector2 C = circleHitPoint.center;
-			Func<Vector2, Vector2> normal = v => new Vector2(-v.y, v.x).normalized;
-			Vector2 ABNormal = normal(A - B);
+			Func<Vector2, Vector2, Vector2> normal = (c, p) => {
+				Vector2 dir = p - c;
+				return new Vector2(-dir.y, dir.x).normalized;
+			};
+			Vector2 ABnormal = -normal(A, B);
 			Vector2 CA = A - C;
-			float dis = Vector2.Dot(CA, ABNormal);
+			float dis = Vector2.Dot(CA, ABnormal);
 			float scale = circleHitPoint.radius / dis;
+			Vector2 CAO = normal(C, A) * volumeRadius + C;
+			Vector2 CAI = -normal(C, A) * volumeRadius + C;
+			Vector2 CBI = normal(C, B) * volumeRadius + C;
+			Vector2 CBO = -normal(C, B) * volumeRadius + C;
 			Func<Vector2, Vector2, Vector2> project = (c, v2) => (v2 - c) * scale + c;
-			Vector2 CAO = C + normal(A - C) * volumeRadius;
-			Vector2 CAI = C - normal(A - C) * volumeRadius;
-			Vector2 CBI = C + normal(B - C) * volumeRadius;
-			Vector2 CBO = C - normal(B - C) * volumeRadius;
 			triangles.Add(vertices.Count + 0);
 			triangles.Add(vertices.Count + 3);
 			triangles.Add(vertices.Count + 2);
