@@ -58,7 +58,6 @@ public class PointLight : MonoBehaviour {
 				return new Vector2(-dir.y, dir.x).normalized;
 			};
 			Vector2 ABnormal = -normal(A, B);
-			Vector2 CA = A - C;
 			Vector2 CAO = normal(C, A) * volumeRadius + C;
 			Vector2 CBO = -normal(C, B) * volumeRadius + C;
 			Func<Vector2, Vector2, Vector2, Vector2> project = (n, origin, point) => {
