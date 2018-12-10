@@ -46,7 +46,8 @@ public class PointLight : MonoBehaviour {
 		shadowMesh.MarkDynamic();
 		shadowMesh.Clear();
 		List<Vector3> vertices = new List<Vector3>();
-		List<Vector2> uvs = new List<Vector2>();
+		List<Vector2> apos = new List<Vector2>();
+		List<Vector2> bpos = new List<Vector2>();
 		List<int> triangles = new List<int>();
 		foreach(var edge in circleHitPoint.ExtractEdge()) {
 			Vector2 A = edge.A;
@@ -58,41 +59,74 @@ public class PointLight : MonoBehaviour {
 			};
 			Vector2 ABnormal = -normal(A, B);
 			Vector2 CA = A - C;
-			float dis = Vector2.Dot(CA, ABnormal);
-			float scale = circleHitPoint.radius / dis;
 			Vector2 CAO = normal(C, A) * volumeRadius + C;
-			Vector2 CAI = -normal(C, A) * volumeRadius + C;
-			Vector2 CBI = normal(C, B) * volumeRadius + C;
 			Vector2 CBO = -normal(C, B) * volumeRadius + C;
-			Func<Vector2, Vector2, Vector2> project = (c, v2) => (v2 - c) * scale + c;
-			triangles.Add(vertices.Count + 0);
-			triangles.Add(vertices.Count + 3);
-			triangles.Add(vertices.Count + 2);
-			triangles.Add(vertices.Count + 1);
-			triangles.Add(vertices.Count + 5);
-			triangles.Add(vertices.Count + 4);
-			triangles.Add(vertices.Count + 0);
-			triangles.Add(vertices.Count + 1);
-			triangles.Add(vertices.Count + 4);
-			triangles.Add(vertices.Count + 0);
-			triangles.Add(vertices.Count + 4);
-			triangles.Add(vertices.Count + 3);
-			vertices.Add(WorldV2ToLocalV3(A));
-			uvs.Add(new Vector2(0,0));
-			vertices.Add(WorldV2ToLocalV3(B));
-			uvs.Add(new Vector2(0,0));
-			vertices.Add(WorldV2ToLocalV3(project(CAO, A)));
-			uvs.Add(new Vector2(1,1));
-			vertices.Add(WorldV2ToLocalV3(project(CAI, A)));
-			uvs.Add(new Vector2(0,1));
-			vertices.Add(WorldV2ToLocalV3(project(CBI, B)));
-			uvs.Add(new Vector2(0,1));
-			vertices.Add(WorldV2ToLocalV3(project(CBO, B)));
-			uvs.Add(new Vector2(1,1));
+			Func<Vector2, Vector2, Vector2, Vector2> project = (n, origin, point) => {
+				float disToPoint = Vector2.Dot(origin - point, n);
+				//float disToPoint = Vector2.Dot(point - origin, n);
+				//float delta = circleHitPoint.radius - (disToC + disToPoint);
+				disToPoint = Mathf.Abs(disToPoint);
+				float delta = circleHitPoint.radius - disToPoint;
+				delta = Mathf.Max(0, delta);
+				float scale = (delta + disToPoint) / disToPoint;
+				Debug.Assert(scale >= 1);
+				return (point - origin) * scale + origin;
+			};
+			if(Vector2.Dot((B - A), normal(A, CAO)) >= 0) {
+				Vector2 CBI = normal(C, B) * volumeRadius + C;
+				triangles.Add(vertices.Count + 0);
+				triangles.Add(vertices.Count + 2);
+				triangles.Add(vertices.Count + 1);
+				vertices.Add(WorldV2ToLocalV3(B));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(project((B - C).normalized, CBI, B)));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(project((B - C).normalized, CBO, B)));
+				apos.Add(A);
+				bpos.Add(B);
+			}
+			else if(Vector2.Dot((A - B), normal(CBO, B)) >= 0) {
+				Vector2 CAI = -normal(C, A) * volumeRadius + C;
+				triangles.Add(vertices.Count + 0);
+				triangles.Add(vertices.Count + 2);
+				triangles.Add(vertices.Count + 1);
+				vertices.Add(WorldV2ToLocalV3(A));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(project((A - C).normalized, CAO, A)));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(project((A - C).normalized, CAI, A)));
+				apos.Add(A);
+				bpos.Add(B);
+			}
+			else {
+				triangles.Add(vertices.Count + 0);
+				triangles.Add(vertices.Count + 1);
+				triangles.Add(vertices.Count + 3);
+				triangles.Add(vertices.Count + 0);
+				triangles.Add(vertices.Count + 3);
+				triangles.Add(vertices.Count + 2);
+				vertices.Add(WorldV2ToLocalV3(A));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(B));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(project(ABnormal, CAO, A)));
+				apos.Add(A);
+				bpos.Add(B);
+				vertices.Add(WorldV2ToLocalV3(project(ABnormal, CBO, B)));
+				apos.Add(A);
+				bpos.Add(B);
+			}
 		}
 		shadowMesh.SetVertices(vertices);
 		shadowMesh.SetTriangles(triangles, 0);
-		shadowMesh.SetUVs(0, uvs);
+		shadowMesh.SetUVs(0, apos);
+		shadowMesh.SetUVs(1, bpos);
 		shadowMesh.RecalculateNormals();
 		this.shadowMesh = shadowMesh;
 		return shadowMesh;
@@ -113,6 +147,8 @@ public class PointLight : MonoBehaviour {
 	}
 	public void DrawShadowMesh(ref CommandBuffer commandBuffer) {
 		Mesh shadowMesh = GenShadowMesh();
+		commandBuffer.SetGlobalVector("_LightPos", Position);
+		commandBuffer.SetGlobalFloat("_LightVolumeRadius", volumeRadius);
 		LightPipe.DrawMesh(commandBuffer, shadowMesh, transform, shadowMaterial);
 	}
 }
