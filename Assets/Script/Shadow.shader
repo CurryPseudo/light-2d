@@ -46,10 +46,10 @@
                 return o;
             }
             float angleBetween(float2 v1, float2 v2) {
-                float M_PI = 3.14159265358;
                 float angle = atan2(v1.y, v1.x) - atan2(v2.y, v2.x);
-                angle = angle + step(M_PI, angle) * -2 * M_PI;
-                angle = angle + step(angle, -M_PI) * 2 * M_PI;
+                angle = degrees(angle);
+                angle = angle - step(180, angle) * 360;
+                angle = angle + step(angle, -180) * 360;
                 return angle;
             }
             float2 _LightPos;
@@ -62,11 +62,12 @@
                 float2 dirBSide = (_LightPos + CENorm) - IN.E;
                 float2 dirA = IN.A - IN.E;
                 float2 dirB = IN.B - IN.E;
-                float fullAngle = angleBetween(dirA, dirB);
-                float angleA = clamp(angleBetween(dirA, IN.A) / fullAngle, 0, 1);
-                float angleB = clamp(angleBetween(dirA, IN.B) / fullAngle, 0, 1);
-                float occlusion = angleB - angleA;                
-                return 1;
+                float fullAngle = angleBetween(dirASide, dirBSide);
+                float angleA = saturate(angleBetween(dirA, dirBSide) / fullAngle);
+                float angleB = saturate(angleBetween(dirB, dirBSide) / fullAngle);
+                float occlusion = abs(angleB - angleA);                
+                //float occlusion = fullAngle / 90;
+                return occlusion;
             }
 
             ENDCG
