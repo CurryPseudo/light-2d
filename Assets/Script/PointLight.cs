@@ -215,7 +215,9 @@ public class CircleHitPoint {
 		if(front) {
 			return new Edge(current, previous);
 		}
-		return null;
+		else {
+			return new Edge(previous, current);
+		}
 	}
 	public IEnumerable<Edge> ExtractEdge() {
 		Collider2D[] colliders = Physics2D.OverlapCircleAll(center, radius);
