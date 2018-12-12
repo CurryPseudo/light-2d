@@ -53,9 +53,6 @@ public class LightPipe : RenderPipeline {
 		}
 
 	}
-	public static void DrawMesh(CommandBuffer commandBuffer, Mesh mesh, Transform transform, Material material) {
-		commandBuffer.DrawMesh(mesh, transform.localToWorldMatrix, material);
-	}
 	public override void Dispose()
         {
             base.Dispose();
