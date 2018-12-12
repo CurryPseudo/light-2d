@@ -71,8 +71,7 @@
                 float ABiggerThanB = step(0, normAngle(angleA - angleB));
                 float angleCW = ABiggerThanB * (angleA - angleB) + angleB;
                 float angleCCW = ABiggerThanB * (angleB - angleA) + angleA;
-                //float crossG = step(0, normAngle(angleG - angleCCW)) * step(0, normAngle(angleCW - angleG));
-                float crossG = 1;
+                float crossG = step(0, normAngle(angleG - angleCCW)) * step(0, normAngle(angleCW - angleG));
                 float sign = crossG * 2 - 1;
                 float side = angleF + (angleG - angleF) * crossG;
                 float valueCW = saturate(normAngle(sign * (angleCW - side)) / full);
