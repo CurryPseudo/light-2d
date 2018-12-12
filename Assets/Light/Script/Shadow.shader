@@ -45,9 +45,14 @@
                 o.E = mul(unity_ObjectToWorld, v.vertex);
                 return o;
             }
-            float angleBetween(float2 v1, float2 v2) {
-                float angle = atan2(v1.y, v1.x) - atan2(v2.y, v2.x);
+            // [-180, 180]
+            float dirAngle(float2 v) {
+                float angle = atan2(v.y, v.x);
                 angle = degrees(angle);
+                return angle;
+            }
+            // [-360, 360] norm to [-180, 180]
+            float normAngle(float angle) {
                 angle = angle - step(180, angle) * 360;
                 angle = angle + step(angle, -180) * 360;
                 return angle;
@@ -58,15 +63,21 @@
             {
                 float2 CE = IN.E - _LightPos;                 
                 float2 CENorm = normalize(float2(-CE.y, CE.x)) * _LightVolumeRadius;
-                float2 dirASide = (_LightPos - CENorm) - IN.E;
-                float2 dirBSide = (_LightPos + CENorm) - IN.E;
-                float2 dirA = IN.A - IN.E;
-                float2 dirB = IN.B - IN.E;
-                float fullAngle = angleBetween(dirASide, dirBSide);
-                float angleA = saturate(angleBetween(dirA, dirBSide) / fullAngle);
-                float angleB = saturate(angleBetween(dirB, dirBSide) / fullAngle);
-                float occlusion = abs(angleB - angleA);                
-                //float occlusion = fullAngle / 90;
+                float angleF = dirAngle((_LightPos - CENorm) - IN.E);
+                float2 angleG = dirAngle((_LightPos + CENorm) - IN.E);
+                float2 angleA = dirAngle(IN.A - IN.E);
+                float2 angleB = dirAngle(IN.B - IN.E);
+                float full = normAngle(angleF - angleG);
+                float ABiggerThanB = step(0, normAngle(angleA - angleB));
+                float angleCW = ABiggerThanB * (angleA - angleB) + angleB;
+                float angleCCW = ABiggerThanB * (angleB - angleA) + angleA;
+                //float crossG = step(0, normAngle(angleG - angleCCW)) * step(0, normAngle(angleCW - angleG));
+                float crossG = 1;
+                float sign = crossG * 2 - 1;
+                float side = angleF + (angleG - angleF) * crossG;
+                float valueCW = saturate(normAngle(sign * (angleCW - side)) / full);
+                float valueCCW = saturate(normAngle(sign * (angleCCW - side)) / full);
+                float occlusion = abs(valueCW - valueCCW);
                 return occlusion;
             }
 
