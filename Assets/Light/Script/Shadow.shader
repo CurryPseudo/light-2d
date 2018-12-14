@@ -66,15 +66,20 @@
             float4 frag(v2f IN) : COLOR
             {
                 float2 CE = IN.E - _LightPos;                 
+                // CE的法线
                 float2 CENorm = normalize(float2(-CE.y, CE.x)) * _LightVolumeRadius;
                 float2 dirF = (_LightPos - CENorm) - IN.E;
                 float2 dirG = (_LightPos + CENorm) - IN.E;
                 float2 dirA = IN.A - IN.E;
                 float2 dirB = IN.B - IN.E;
                 float full = dirBetweenAngle(dirF, dirG);
+                // 若EA在EB顺时针端，为1，否则为0
                 float ABiggerThanB = step(0, dirBetweenAngle(dirA, dirB));
+                //顺时针端的边
                 float2 dirCW = ABiggerThanB * (dirA - dirB) + dirB;
+                //偏逆时针端的边
                 float2 dirCCW = dirA + dirB - dirCW;
+                //若AB跨过EG，为1，否则为0
                 float crossG = step(0, dirBetweenAngle(dirG, dirCCW)) * step(0, dirBetweenAngle(dirCW, dirG));
                 float sign = crossG * 2 - 1;
                 float2 startingEdge = dirF + (dirG - dirF) * crossG;
@@ -83,7 +88,6 @@
                 float occlusion = abs(valueCW - valueCCW);
                 return occlusion;
             }
-
             ENDCG
         }
     }
