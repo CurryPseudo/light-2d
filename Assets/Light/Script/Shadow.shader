@@ -57,25 +57,29 @@
                 angle = angle + step(angle, -180) * 360;
                 return angle;
             }
+            // [-180, 180]
+            float dirBetweenAngle(float2 v1, float2 v2) {
+                return normAngle(dirAngle(v1) - dirAngle(v2));
+            }
             float2 _LightPos;
             float _LightVolumeRadius;
             float4 frag(v2f IN) : COLOR
             {
                 float2 CE = IN.E - _LightPos;                 
                 float2 CENorm = normalize(float2(-CE.y, CE.x)) * _LightVolumeRadius;
-                float angleF = dirAngle((_LightPos - CENorm) - IN.E);
-                float2 angleG = dirAngle((_LightPos + CENorm) - IN.E);
-                float2 angleA = dirAngle(IN.A - IN.E);
-                float2 angleB = dirAngle(IN.B - IN.E);
-                float full = normAngle(angleF - angleG);
-                float ABiggerThanB = step(0, normAngle(angleA - angleB));
-                float angleCW = ABiggerThanB * (angleA - angleB) + angleB;
-                float angleCCW = ABiggerThanB * (angleB - angleA) + angleA;
-                float crossG = step(0, normAngle(angleG - angleCCW)) * step(0, normAngle(angleCW - angleG));
+                float2 dirF = (_LightPos - CENorm) - IN.E;
+                float2 dirG = (_LightPos + CENorm) - IN.E;
+                float2 dirA = IN.A - IN.E;
+                float2 dirB = IN.B - IN.E;
+                float full = dirBetweenAngle(dirF, dirG);
+                float ABiggerThanB = step(0, dirBetweenAngle(dirA, dirB));
+                float2 dirCW = ABiggerThanB * (dirA - dirB) + dirB;
+                float2 dirCCW = dirA + dirB - dirCW;
+                float crossG = step(0, dirBetweenAngle(dirG, dirCCW)) * step(0, dirBetweenAngle(dirCW, dirG));
                 float sign = crossG * 2 - 1;
-                float side = angleF + (angleG - angleF) * crossG;
-                float valueCW = saturate(normAngle(sign * (angleCW - side)) / full);
-                float valueCCW = saturate(normAngle(sign * (angleCCW - side)) / full);
+                float2 startingEdge = dirF + (dirG - dirF) * crossG;
+                float valueCW = saturate(sign * dirBetweenAngle(dirCW, startingEdge) / full);
+                float valueCCW = saturate(sign * dirBetweenAngle(dirCCW, startingEdge) / full);
                 float occlusion = abs(valueCW - valueCCW);
                 return occlusion;
             }
